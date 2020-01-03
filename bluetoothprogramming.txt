@@ -1,0 +1,124 @@
+C Programming with libbluetooth
+
+- Finer control over local Bluetooth adapter.
+
+Representation of Bluetooth Addresses
+
+typedef struct {
+	uint8_t b[6];
+} __attribute__((packed)) bdaddr_t;
+
+above is the basic data structure used to specify a Bluetooth device address. Which is simply a packed
+array of six bytes. ALL bluetooth addresses in BlueZ will be stored and manipulated as bdaddr_t
+structures. Two convenience functions, str2ba and ba2str can be used to convert between strings and
+bdaddr_t structures.
+
+Functions' constructers ---
+
+int str2ba( const char *str, bdaddr_t *ba );
+int ba2str( const bdaddr_t *ba, char *str );
+
+str2ba takes a string of the form "XX:XX:XX:XX:XX:XX", where each XX is a hexadecimal number specifying
+one byte of the 6-byte address, and packs it into a bdaddr_t. ba2str does the opposite.
+
+Choosing a local bluetooth adapter --
+
+Local bluetooth adapters are assigned identifying numbers starting with 0, and a program must specify
+which adapter to use when allocating system resources. Usually, there is only one adapter or it doesn't
+matter which one is usedm so passing NULL to hci_get_route will retrieve the resource number of the first
+available bluetooth adapter.
+
+int hci_get_route( bdaddr_t *addr );
+
+This function actually returns the resource number of any adapter whose bluetooth address does not match the one passed in as a 
+parameter, so by passing in NULL, the program essentially asks for any available adapter, If there are multiple bluetooth adapters present,
+and we know which one we want, then we can use hci_devid.
+
+int hci_devid( const char *addr );
+
+Unlike its counterpart, hci_devid returns the resource number of the bluetooth adapter whose address matches the one passed in as a parameter.
+This is one of the few places where a BlueZ function uses a string representation to work with a bluetooth address instead of a bdaddr_structure.
+
+Once the program has chosen which adapter to use in scanning for nearby devices, it must allocate resources to use that adapter. This can be done with 
+the hci_open_dev function.
+
+int hci_open_dev( int dev_id );
+
+To be more specific, this function opens a socket connection to the microcontroller on the specified local bluetooth adapter. Keep in mind that this 
+is not a connection to a remote bluetooth device, and is used specifically for controlling the local adapter. The result returned by hci_open_dev is
+a handle to the socker. On error, it returns -1 and sets errno.
+
+It is not a good idea to hard-code the device number 0, because that is not always the id of the first adapter. For example, if there were two adapters
+on the system and the first adapter (id 0) is disabled, then the first available adapter ist he one with id 1.
+
+Scanning for nearby devices --
+
+After choosing the local bluetooth adapter to use and allocating system resources, the program is ready to scan for nearby bluetooth devices.
+In the example, hci_inquiry performs a bluetooth device discovery and returns a list of detected devices and some basic information about them in the variable ii.
+
+int hci_inquiry(int dev_id, int len, int max_rsp, const uint8_t *lap, inquiry_info **ii, long flags);
+
+Here, the function doesn't actually use the socket opened in the previous step. Instead, hci_inquiry takes the resources number returned by
+hci_get_route (or hci_devid) as its first parameter. Most other functions we'll see will use the socket opened by hci_open_dev, but this one creates
+its own internal socket. The inquiry lasts for at most 1.28 * len seconds, and at most max_rsp devices will be returned in the output parameter ii,
+which must be large enough to accomodate max_rsp results. We suggest using a max_rsp of 255 for a standard 10.24 second inquiry.
+
+If flags is set to IREQ_CACHE_FLUSH, then the cache of previously detected devices is flushed before performing the current inquiry. Otherwise, if flags 
+is set to 0, then the results of previous inquiries may be returned, even if the devices aren't in range anymore.
+
+The inquiry_info structure is defined as:
+
+typedef struct {
+	bdaddr_t bdaddr;
+	uint8_t	 pscan_rep_mode;
+	uint8_t  pscan_period_mode;
+	uint8_t  pscan_mode;
+	uint8_t  dev_class[3];
+	uint16_t clock_offset;
+} __attribute__ ((packed)) inquiry_info;
+
+Only the first entry - the bdaddr field, which gives the address of the detected device - is of any use. Occasionally, there may be a use for the
+dev_class field, which gives information about the type of device detected (i.e. if it's a printer, phone, desktop computer, etc.) and is described in the
+bluetooth assigned numbers. The rest of the fields are used for low level communication, and are not useful for most purposes. If you're interested,
+the bluetooth specification has all the gory details.
+
+Determing the user-friendly name of a nearby device --
+
+Once a list of nearby bluetooth devices and their addresses have been found, the program determines the user-friendly names associated with those addresses and presents
+them to the user. The hci_read_remote_name function is used for this purpose.
+
+int hci_read_remote_name(int hci_sock, const bdaddr_t *addr, int len, char *name, int timeout)
+
+hci_read_remote_name tries for at most timeout milliseconds to use the socker hci_sock to query the user-friendly name of the device with bluetooth address
+addr. On success, hci_read_remote_name returns 0 and copies at most the first len bytes of the device's user-friendly name into name.
+
+hci_read_remote_name only tries to resolve a single name, so a program will typically invoke it many times to get a list all the user-friendly names of
+nearby bluetooth devices.
+
+Error Handling --
+
+So far, all the functions introduced return an integer on completion, If the function succeeds in doing whhatever it was the program requested, then the return
+value is always greater than or equal to 0. If the function fails, then the return value is -1 and the errno global variable is set to indicate the type of error.
+This is true of all the hci_ functions, as well as for all of the socket functions described in the next few sections.
+
+In the examples, we've left out error checking for clarity, but a robust program should examine the return value of each function call to check for potential failures.
+A simple way to incorporate error handling is to use the strerror function to print out what went wrong, and then exit. For example, consider the following snippet of code:
+
+int dev_id = hci_get_route( NULL );
+if (dev_id < 0) {
+	fprintf(stderr, "error code %d: %s\n", errno, strerror(errno));
+	exit(1);
+}
+
+If we ran this bit of code on a machine that does not have a bluetooth adapter, we might see the follwoing output:
+
+error code 19: no such device.
+
+This might not be the best error message to show an actual user, but it should give you an idea of how to add error handling to your bluetooth programs.
+
+RFCOMM Sockets --
+
+As with Python, establishing and using RFCOMM connections boils down to the same socket programming techniques, which are also widely used in Internet Programming.
+
+
+
