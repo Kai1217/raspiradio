@@ -1,12 +1,12 @@
-import bluetooth
+import bluetooth as bl
 
 targetName = "OPPO R11s"
 targetAddress = None
 
-nearbyDevices = bluetooth.discover_devices()
+nearbyDevices = bl.discover_devices()
 
 for bdaddr in nearbyDevices:
-    if targetName == bluetooth.lookup_name(bdaddr):
+    if targetName == bl.lookup_name(bdaddr):
         targetAddress = bdaddr
         break
 

@@ -122,3 +122,30 @@ As with Python, establishing and using RFCOMM connections boils down to the same
 
 
 
+----- RFCOMM INFORMATION ----
+
+The RFCOMM protocol provides the same service and reliability as TCP. Howeber the spec states that it was designed to emulate RS-232 (serial ports) to make it easier for manufacturers to add bluetooth capabilities to existing serial port devices.
+It is quite simple to use it in many of the same scenarios as TCP.
+
+Applications that use TCP are concerned with having a point-to-point connection over which they can reliably exchange streams of data.
+If a portion of that data cannot be delivered within a fixed time limit, then the connection is terminated and an error is returned. With its serial port emulation propeties,
+they do not concern network programmers, RFCOMM provides the same major attributes of TCP.
+
+The major difference between TCP and RFCOMM is the choice of a port number. Where TCP supports up to 65535 open ports on a single machine, RFCOMM only allows for 30.
+This has a significant impact on how to choose port numbers for server applications.
+
+----- L2CAP INFORMATION -----
+
+UDP is often used in situations where reliable delivery of every packet is not crucial, and sometimes to avoid the additional overhead incurred by TCP.
+Specifically, UDP is chosen for it's best-effot, simple datagram semantics. These are the same criteria that L2CAP satisfies as a communications protocol.
+
+L2CAP provides a connection-oriented protocol that sends individual datagrams of fixed maximum length. The default maximum packet size is 672 bytes, but this can
+be negotiated up to 65535 bytes. Being fairly customizable, L2CAP can be configured for varying levels of reliability. To provide this service, the transport protocol that L2CAP is built on
+employs an transmit/acknowledgement scheme, where unacknowledged packets are retransmitted. There are three policies an applications can use:
+
+- Never retransmitted
+- Retransmit until success or total connection failure (The Default)
+- Drop a packet and move on to queued data if a packet hasn't been acknowledged after a specified time limit (0-1279 Milliseconds). This is
+usefel when data must be transmitted in a timely manner.
+
+Never transmitting and dropping packets after a timeout are often referred to as best-effort communications. Trying to deliver a packet until it has been acknowledged or the entire connection fails is known as reliable communications.
