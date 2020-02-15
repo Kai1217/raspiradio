@@ -1,29 +1,14 @@
-import bluetooth as bl
+import bluetooth as bt
 
-serverSocket = bl.BluetoothSocket(bl.RFCOMM)
-port = 4
-serverSocket.bind(("",port))
-serverSocket.listen(4)
+serverSock = bt.BluetoothSocket(bt.RFCOMM)
 
-clientSocket, address = serverSocket.accept()
-print("Accepted connection from ", address)
-while True:
-    data = clientSocket.recv(1024)
-    if not data: break
-    clientSocket.send(data)
+port = 1
+serverSock.bind(("",port))
+serverSock.listen(1)
 
-#def recvall(clientSocket):
-#    BUFFERSIZE = 4096
- #   data = b''
-  #  while True:
-   #     part = clientSocket.recv(BUFFERSIZE)
-    #    data += part
-     #   if len(part) < BUFFERSIZE:
-      #      break
-    #return data
-#data = recvall(clientSocket)
-#while True:
-#   print("Recieved [%s]" % data)
-
-clientSocket.close()
-serverSocket.close()
+clientSock,address = serverSock.accept()
+print("Accepted connection from: %s" % (address))
+data = clientSock.recv(1024)
+print("Received [%s]" % data)
+clientSock.close()
+serverSock.close()
