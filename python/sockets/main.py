@@ -1,6 +1,6 @@
 import socket
 
-bdaddr = "B8:27:EB:85:59:E3"
+bdaddr = "98:5F:D3:DC:83:EB"
 channel = 4
 s = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
 s.connect((bdaddr, channel))
